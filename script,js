@@ -1,0 +1,150 @@
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. 生成随机三位数（100-999）
+    const targetNumber = Math.floor(Math.random() * 900) + 100;
+    console.log("调试用：目标数字是", targetNumber); // 方便调试，可删除
+    // 初始化轮数
+    let roundCount = 1;
+    // 获取页面元素（增加空值判断）
+    const guessInput = document.getElementById('guess-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const resultInfo = document.getElementById('result-info');
+    const roundCountElement = document.getElementById('round-count');
+    const endEvaluation = document.getElementById('end-evaluation');
+
+    // 安全校验：确保所有元素都获取到
+    if (!guessInput || !submitBtn || !resultInfo || !roundCountElement || !endEvaluation) {
+        alert("页面元素加载异常，请刷新页面！");
+        return;
+    }
+
+    // 2. 绑定提交按钮点击事件（增加防抖）
+    let isSubmitting = false;
+    submitBtn.addEventListener('click', function() {
+        if (isSubmitting) return; // 防止重复提交
+        isSubmitting = true;
+        checkGuess();
+        setTimeout(() => {
+            isSubmitting = false; // 100ms后解除防抖
+        }, 100);
+    });
+
+    // 3. 绑定回车键提交（修复焦点问题）
+    guessInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !isSubmitting) {
+            e.preventDefault(); // 阻止默认行为
+            isSubmitting = true;
+            checkGuess();
+            setTimeout(() => {
+                isSubmitting = false;
+            }, 100);
+        }
+    });
+
+    // 核心函数：检查玩家猜测（完全重构，更健壮）
+    function checkGuess() {
+        // 重置提示文字样式
+        resultInfo.style.color = '#333';
+        
+        // 获取并清理输入值
+        let guessValue = guessInput.value.trim();
+        if (guessValue === '') {
+            resultInfo.textContent = '请输入三位数！';
+            resultInfo.style.color = '#f56c6c';
+            return;
+        }
+
+        // 强转为数字并验证（修复整数判断问题）
+        const num = parseInt(guessValue, 10);
+        if (isNaN(num) || num < 100 || num > 999) {
+            resultInfo.textContent = '请输入100-999之间的有效三位数！';
+            resultInfo.style.color = '#f56c6c';
+            guessInput.value = ''; // 清空错误输入
+            return;
+        }
+
+        // 转换为固定3位字符串（防止数字转字符串后长度不足）
+        const guessStr = num.toString().padStart(3, '0');
+        const targetStr = targetNumber.toString().padStart(3, '0');
+        
+        // 计算匹配结果（简化逻辑，避免数组操作错误）
+        let correctPosition = 0; // 位置正确
+        let correctNumber = 0;    // 数字正确（不考虑位置）
+
+        // 第一步：统计位置正确的数量
+        for (let i = 0; i < 3; i++) {
+            if (guessStr[i] === targetStr[i]) {
+                correctPosition++;
+            }
+        }
+
+        // 第二步：统计数字正确的总数量（去重）
+        const guessSet = new Set(guessStr);
+        const targetSet = new Set(targetStr);
+        for (const digit of guessSet) {
+            if (targetSet.has(digit)) {
+                // 统计该数字在两边出现的次数，取较小值
+                const guessCount = [...guessStr].filter(d => d === digit).length;
+                const targetCount = [...targetStr].filter(d => d === digit).length;
+                correctNumber += Math.min(guessCount, targetCount);
+            }
+        }
+
+        // 数字正确但位置错误的数量 = 总数字正确数 - 位置正确数
+        const correctNumberWrongPosition = correctNumber - correctPosition;
+
+        // 显示判定结果
+        let resultText = '';
+        if (correctPosition === 0 && correctNumberWrongPosition === 0) {
+            resultText = '甜菜，一个数字也没猜对';
+        } else {
+            if (correctPosition > 0) {
+                resultText += `猜对了${correctPosition}个数字且位置正确`;
+            }
+            if (correctNumberWrongPosition > 0) {
+                resultText += (resultText ? '，' : '') + `猜对了${correctNumberWrongPosition}个数字但位置不正确`;
+            }
+        }
+        resultInfo.textContent = resultText;
+
+        // 检查是否猜对
+        if (correctPosition === 3) {
+            endGame(roundCount);
+            return;
+        }
+
+        // 未猜对则更新轮数
+        roundCount++;
+        roundCountElement.textContent = roundCount;
+        // 清空输入框并保持焦点
+        guessInput.value = '';
+        guessInput.focus();
+    }
+
+    // 游戏结束处理（增加鲁棒性）
+    function endGame(rounds) {
+        // 禁用输入框和提交按钮
+        guessInput.disabled = true;
+        submitBtn.disabled = true;
+
+        // 根据轮数获取评价文字
+        let evaluation = '';
+        if (rounds <= 5) {
+            evaluation = '夯';
+        } else if (rounds <= 8) {
+            evaluation = '顶级';
+        } else if (rounds <= 10) {
+            evaluation = '人上人';
+        } else if (rounds <= 15) {
+            evaluation = 'NPC';
+        } else {
+            evaluation = '拉完了';
+        }
+
+        // 显示评价和恭喜信息
+        endEvaluation.style.display = 'block';
+        endEvaluation.innerHTML = `<div class="evaluation-text">${evaluation}</div>`;
+        resultInfo.textContent = `恭喜！你用了${rounds}轮猜对了数字${targetNumber}！`;
+        resultInfo.style.color = '#67c23a';
+    }
+});

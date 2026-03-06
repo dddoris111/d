@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>猜三位数小游戏 - 严格规则版</title>
+    <style>
+        /* 基础样式，保证界面简洁美观 */
+        body { 
+            font-family: "Microsoft Yahei", sans-serif; 
+            margin: 50px; 
+            background-color: #f5f5f5;
+        }
+        .container { 
+            max-width: 450px; 
+            margin: 0 auto; 
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #guess-input { 
+            padding: 10px; 
+            width: 180px; 
+            font-size: 18px;
+            margin-right: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            outline: none;
+        }
+        #guess-input:focus {
+            border-color: #409eff;
+        }
+        #submit-btn { 
+            padding: 10px 20px; 
+            font-size: 18px; 
+            cursor: pointer;
+            background-color: #409eff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        #submit-btn:hover {
+            background-color: #337ecc;
+        }
+        #submit-btn:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+        #round-info {
+            font-size: 20px;
+            margin: 15px 0;
+            color: #666;
+        }
+        #result { 
+            margin-top: 20px; 
+            font-size: 18px; 
+            min-height: 24px;
+            color: #333;
+        }
+        #evaluation { 
+            margin-top: 20px; 
+            font-size: 80px; 
+            font-weight: bold;
+            color: #e6a23c; 
+            display: none; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>猜三位数小游戏</h1>
+        <div id="round-info">当前轮数：<span id="round">1</span></div>
+        <input type="text" id="guess-input" placeholder="输入100-999的三位数">
+        <button id="submit-btn">提交猜测</button>
+        <div id="result"></div>
+        <div id="evaluation"></div>
+    </div>
+
+    <script>
+        // 核心变量初始化
+        const resultBox = document.getElementById('result');
+        const submitBtn = document.getElementById('submit-btn');
+        const guessInput = document.getElementById('guess-input');
+        const roundBox = document.getElementById('round');
+        const evaluationBox = document.getElementById('evaluation');
+        
+        // 1. 生成100-999的随机三位数（严格规则）
+        const targetNumber = Math.floor(Math.random() * 900) + 100;
+        const targetStr = targetNumber.toString(); // 转为字符串方便逐位对比
+        let currentRound = 1;
+        let gameOver = false;
+
+        // 初始化提示
+        resultBox.textContent = "请输入100-999之间的三位数开始游戏！";
+
+        // 2. 核心判定函数（严格按规则实现）
+        function calculateResult(guessStr) {
+            let correctPosition = 0; // X：数字且位置都正确
+            let correctNumberWrongPos = 0; // Y：数字正确但位置错误
+            
+            // 步骤1：复制目标数字数组，用于后续匹配（避免修改原数据）
+            const targetDigits = [...targetStr];
+            const guessDigits = [...guessStr];
+
+            // 步骤2：先统计位置完全正确的数字（X）
+            for (let i = 0; i < 3; i++) {
+                if (guessDigits[i] === targetDigits[i]) {
+                    correctPosition++;
+                    // 标记为已匹配，避免重复计算
+                    targetDigits[i] = null;
+                    guessDigits[i] = null;
+                }
+            }
+
+            // 步骤3：统计数字正确但位置错误的数字（Y）
+            for (let i = 0; i < 3; i++) {
+                // 跳过已标记为位置正确的数字
+                if (guessDigits[i] === null) continue;
+                
+                // 查找当前数字在目标数组中的位置
+                const matchIndex = targetDigits.indexOf(guessDigits[i]);
+                if (matchIndex !== -1) {
+                    correctNumberWrongPos++;
+                    // 标记为已匹配，避免重复计算
+                    targetDigits[matchIndex] = null;
+                }
+            }
+
+            return { correctPosition, correctNumberWrongPos };
+        }
+
+        // 3. 提交事件处理（严格按规则输出）
+        submitBtn.onclick = function() {
+            if (gameOver) return;
+
+            const inputValue = guessInput.value.trim();
+            resultBox.style.color = "#333";
+
+            // 输入验证
+            if (inputValue.length !== 3 || isNaN(inputValue)) {
+                resultBox.textContent = "错误：请输入有效的3位数字！";
+                resultBox.style.color = "#f56c6c";
+                return;
+            }
+
+            const guessNum = Number(inputValue);
+            if (guessNum < 100 || guessNum > 999) {
+                resultBox.textContent = "错误：请输入100-999之间的三位数！";
+                resultBox.style.color = "#f56c6c";
+                return;
+            }
+
+            const guessStr = inputValue;
+            // 获取判定结果
+            const { correctPosition, correctNumberWrongPos } = calculateResult(guessStr);
+
+            // 严格按规则输出文案
+            let resultText = "";
+            if (correctPosition === 0 && correctNumberWrongPos === 0) {
+                resultText = "甜菜，一个数字也没猜对";
+            } else {
+                if (correctPosition > 0) {
+                    resultText += `猜对了${correctPosition}个数字且位置正确`;
+                }
+                if (correctNumberWrongPos > 0) {
+                    resultText += (resultText ? '，' : '') + `猜对了${correctNumberWrongPos}个数字但位置不正确`;
+                }
+            }
+            resultBox.textContent = resultText;
+
+            // 检查是否猜对（3个位置都正确）
+            if (correctPosition === 3) {
+                gameOver = true;
+                // 禁用输入和提交
+                guessInput.disabled = true;
+                submitBtn.disabled = true;
+                // 修正结果文案
+                resultBox.textContent = `恭喜！你用了${currentRound}轮猜对了数字${targetNumber}！`;
+                resultBox.style.color = "#67c23a";
+                
+                // 严格按轮数显示评价（超大字号）
+                let evaluationText = "";
+                if (currentRound <= 5) {
+                    evaluationText = "夯";
+                } else if (currentRound <= 8) {
+                    evaluationText = "顶级";
+                } else if (currentRound <= 10) {
+                    evaluationText = "人上人";
+                } else if (currentRound <= 15) {
+                    evaluationText = "NPC";
+                } else {
+                    evaluationText = "拉完了";
+                }
+                evaluationBox.style.display = "block";
+                evaluationBox.textContent = evaluationText;
+                return;
+            }
+
+            // 未猜对，轮数+1
+            currentRound++;
+            roundBox.textContent = currentRound;
+            // 清空输入框并聚焦
+            guessInput.value = "";
+            guessInput.focus();
+        };
+
+        // 回车键提交
+        guessInput.onkeydown = function(e) {
+            if (e.key === 'Enter' && !gameOver) {
+                submitBtn.onclick();
+            }
+        };
+    </script>
+</body>
+</html>
